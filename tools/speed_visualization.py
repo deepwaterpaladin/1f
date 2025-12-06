@@ -2,6 +2,7 @@ import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
+import plotly.graph_objects as go
 
 import fastf1
 
@@ -83,3 +84,80 @@ def plot_fastest_lap(year: int, gp: str | int,  ses:str, driver:str):
                                     orientation="horizontal")
 
     plt.show()
+
+
+
+def plot_fastest_lap_plotly(year: int, gp: str | int, ses: str, driver: str):
+    """
+    Plot fastest lap with Plotly (interactive)
+    Yellow = slow, Purple = fast
+    """
+    session = fastf1.get_session(year, gp, ses)
+    sess = session_dict[ses]
+    
+    if type(gp) == str:
+        name = gp
+    else:
+        name = gp_arr[gp-1]
+    
+    session.load()
+    lap = session.laps.pick_drivers(driver).pick_fastest()
+
+    x = lap.telemetry['X']
+    y = lap.telemetry['Y']
+    speed = lap.telemetry['Speed']
+
+    # Create figure
+    fig = go.Figure()
+
+    # Add the colored line trace
+    fig.add_trace(go.Scatter(
+        x=x,
+        y=y,
+        mode='markers+lines',  # Changed to include markers
+        line=dict(
+            color='rgba(0,0,0,0.3)',  # Light background line
+            width=2
+        ),
+        marker=dict(
+            color=speed,  # Color goes in marker, not line
+            colorscale='Plasma_r',  # Reversed: yellow=slow, purple=fast
+            size=8,
+            colorbar=dict(
+                title="Speed (km/h)",
+                thickness=20,
+                len=0.7
+            ),
+            line=dict(width=0)  # No marker outline
+        ),
+        hovertemplate='Speed: %{marker.color:.1f} km/h<extra></extra>',
+        showlegend=False
+    ))
+
+    # Update layout
+    fig.update_layout(
+        title=dict(
+            text=f'{year} {name} {sess} - {driver} - Speed',
+            x=0.5,
+            xanchor='center',
+            font=dict(size=24)
+        ),
+        xaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            visible=False,
+            scaleanchor="y",
+            scaleratio=1
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            visible=False
+        ),
+        plot_bgcolor='white',
+        width=1200,
+        height=675,
+        hovermode='closest'
+    )
+
+    fig.show()
