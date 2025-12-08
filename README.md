@@ -1,5 +1,7 @@
 # 1F 
 
+![alt text](1f.png "Logo")
+
 1F is a repository for Formula One data visualizations using the python package `fastf1`.
 
 ## Local Development
