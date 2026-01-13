@@ -1,19 +1,36 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import fastf1
 
+
 def create_season_heatmap(year: int) -> go.Figure:
     """
     Creates a heatmap visualization of F1 driver points for a given season.
-    Handles mid-season cases by skipping races that haven't occurred yet (not ideal but workable for now).
+    
+    This function fetches the F1 race schedule and results for the specified year,
+    processes driver points (including sprint races where applicable), and generates
+    an interactive heatmap showing points earned by each driver at each race, along
+    with total season points.
     
     Args:
-        year: The season year to visualize
-        
+        year: The Formula 1 season year to visualize (e.g., 2023, 2024).
+    
     Returns:
-        A Plotly figure object containing the heatmap
+        A Plotly Figure object.
+    
+    Raises:
+        ValueError: If no race data is available for the specified season.
+    
+    Notes:
+        - Races that haven't occurred yet are automatically skipped
+        - Sprint race points are combined with main race points
+        - Drivers are sorted by total points (ascending order)
+    
+    Example:
+        >>> fig = create_season_heatmap(2024)
+        >>> fig.show()
     """
     
     schedule: pd.DataFrame = fastf1.get_event_schedule(year, include_testing=False)
@@ -25,18 +42,18 @@ def create_season_heatmap(year: int) -> go.Figure:
         round_number: int = event["RoundNumber"]
         
         try:
-            race = fastf1.get_session(year, event_name, "R")
+            race: fastf1.core.Session = fastf1.get_session(year, event_name, "R")
             race.load(laps=False, telemetry=False, weather=False, messages=False)
             
             if race.results is None or race.results.empty:
                 continue
                 
         except Exception as e:
-            continue  # Skipping races that haven't happened yet (we can handle another way)
+            continue  # Skipping races that haven't happened yet
         
         short_event_names.append(event_name.replace("Grand Prix", "").strip())
 
-        sprint = None
+        sprint: Optional[fastf1.core.Session] = None
         sprint_points_dict: Dict[str, float] = {}
         
         if event["EventFormat"] == "sprint_qualifying":
@@ -46,7 +63,9 @@ def create_season_heatmap(year: int) -> go.Figure:
                 
                 if sprint.results is not None and not sprint.results.empty:
                     for _, sprint_row in sprint.results.iterrows():
-                        sprint_points_dict[sprint_row["Abbreviation"]] = sprint_row["Points"]
+                        abbreviation: str = sprint_row["Abbreviation"]
+                        sprint_points: float = sprint_row["Points"]
+                        sprint_points_dict[abbreviation] = sprint_points
             except Exception:
                 pass
 
@@ -77,7 +96,7 @@ def create_season_heatmap(year: int) -> go.Figure:
 
     heatmap_data["total_points"] = heatmap_data.sum(axis=1)
     heatmap_data = heatmap_data.sort_values(by="total_points", ascending=True)
-    total_points = heatmap_data["total_points"].values
+    total_points: pd.Series = heatmap_data["total_points"]
     heatmap_data = heatmap_data.drop(columns=["total_points"])
     
     position_data: pd.DataFrame = df.pivot(
@@ -102,6 +121,9 @@ def create_season_heatmap(year: int) -> go.Figure:
     )
     fig.update_layout(width=900, height=800)
 
+    max_points: float = heatmap_data.values.max() if heatmap_data.values.max() > 0 else 1
+    max_total_points: float = total_points.max() if total_points.max() > 0 else 1
+
     fig.add_trace(
         go.Heatmap(
             x=short_event_names,
@@ -120,7 +142,7 @@ def create_season_heatmap(year: int) -> go.Figure:
             colorscale="YlGnBu",
             showscale=False,
             zmin=0,
-            zmax=heatmap_data.values.max() if heatmap_data.values.max() > 0 else 1,
+            zmax=max_points,
         ),
         row=1,
         col=1,
@@ -130,14 +152,14 @@ def create_season_heatmap(year: int) -> go.Figure:
         go.Heatmap(
             x=["Total Points"] * len(total_points),
             y=heatmap_data.index,
-            z=total_points,
-            text=total_points,
+            z=total_points.values,
+            text=total_points.values,
             texttemplate="%{text}",
             textfont={"size": 12},
             colorscale="YlGnBu",
             showscale=False,
             zmin=0,
-            zmax=total_points.max() if total_points.max() > 0 else 1,
+            zmax=max_total_points,
         ),
         row=1,
         col=2,
