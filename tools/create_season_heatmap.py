@@ -95,7 +95,7 @@ def create_season_heatmap(year: int) -> go.Figure:
     ).fillna(0)
 
     heatmap_data["total_points"] = heatmap_data.sum(axis=1)
-    heatmap_data = heatmap_data.sort_values(by="total_points", ascending=True)
+    heatmap_data: pd.DataFrame = heatmap_data.sort_values(by="total_points", ascending=True)
     total_points: pd.Series = heatmap_data["total_points"]
     heatmap_data = heatmap_data.drop(columns=["total_points"])
     
