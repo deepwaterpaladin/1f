@@ -50,7 +50,6 @@ session_dict: Dict[str, str] = {
 def plot_fastest_lap(year: int, gp: str | int, ses: str, driver: str) -> None:
     """
     Creates a matplotlib visualization of a driver's fastest lap with speed data.
-    
     This function generates a track map colored by speed, where the color gradient
     represents the speed at each point on the track. Uses matplotlib with a plasma
     colormap (reversed) where yellow indicates slower speeds and purple indicates
